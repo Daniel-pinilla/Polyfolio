@@ -7,6 +7,7 @@
 <meta name="description" content="Polyfolio: portafolio de modelado 3D. Compara la malla y el render de cada modelo con un deslizador.">
 <meta property="og:title" content="Polyfolio · Portafolio 3D">
 <meta property="og:description" content="Del wireframe a la luz: mis modelos 3D, malla y render.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kaushan+Script&display=swap" rel="stylesheet">
 <title>Polyfolio · Portafolio 3D</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--tx:#1c1c1a;--mu:#6b6a65;--ac:#e8590c;--bd:#deddd8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -92,6 +93,10 @@ dialog{max-height:90vh;overflow:auto}
 @keyframes fade{from{opacity:0}}
 @keyframes rise{from{opacity:0;transform:translateY(26px)}}
 @keyframes pop{from{opacity:0;transform:translateY(14px)}}
+@font-face{font-family:"Jacksilver";src:url("jacksilver.woff2") format("woff2"),url("jacksilver.ttf") format("truetype"),url("jacksilver.otf") format("opentype");font-display:swap}
+.brand{font-family:"Jacksilver","Kaushan Script","Brush Script MT",cursive;font-weight:400;letter-spacing:0}
+header h1.brand,.login h1.brand{font-size:clamp(40px,7vw,64px);line-height:1.1}
+#intro h1{font-size:clamp(72px,18vw,180px)}
 </style>
 </head>
 <body>
@@ -105,9 +110,15 @@ const $=id=>document.getElementById(id);
 let session=null,items=[],links=[],pos={},loaded=false,staggered=false,editing=null;
 const safe=p=>/^[\w-]+\.(png|jpe?g|webp|gif)$/.test(String(p))?sb.storage.from("renders").getPublicUrl(p).data.publicUrl:"";
 const isAdm=()=>!!session&&location.hash==="#admin";
-const P={Instagram:"https://instagram.com/",ArtStation:"https://www.artstation.com/",Behance:"https://www.behance.net/",X:"https://x.com/",YouTube:"https://youtube.com/@",TikTok:"https://tiktok.com/@",LinkedIn:"https://linkedin.com/in/",Sketchfab:"https://sketchfab.com/",Otro:""};
+const P={Instagram:"https://instagram.com/",ArtStation:"https://www.artstation.com/",Behance:"https://www.behance.net/",X:"https://x.com/",YouTube:"https://youtube.com/@",TikTok:"https://tiktok.com/@",LinkedIn:"https://linkedin.com/in/",Sketchfab:"https://sketchfab.com/",WhatsApp:"",Gmail:"",Otro:""};
+const okUrl=u=>{try{const x=new URL(String(u));return /^(https?:|mailto:)$/.test(x.protocol)?x.href:null}catch(e){return null}};
 function norm(pl,v){
   v=String(v).trim();if(!v)return null;
+  if(pl==="Gmail")return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)?"mailto:"+v:null;
+  if(pl==="WhatsApp"){
+    if(/^https?:\/\//i.test(v)){try{const x=new URL(v);return /^(wa\.me|api\.whatsapp\.com)$/.test(x.hostname)?x.href:null}catch(e){return null}}
+    const d=v.replace(/\D/g,"");return d.length>=8&&d.length<=15?"https://wa.me/"+d:null;
+  }
   const u=/^https?:\/\//i.test(v)?v:(P[pl]?P[pl]+v.replace(/^@/,""):null);
   if(!u)return null;
   try{const x=new URL(u);return /^https?:$/.test(x.protocol)?x.href:null}catch(e){return null}
@@ -184,7 +195,7 @@ function socials(adm){
       ch.querySelector("button").onclick=async()=>{await sb.from("socials").delete().eq("id",l.id)};
       w.appendChild(ch);
     }else{
-      const a=document.createElement("a");a.href=norm("Otro",l.url)||"#inicio";a.target="_blank";a.rel="noopener noreferrer";a.textContent=l.platform+" ↗";w.appendChild(a);
+      const a=document.createElement("a");a.href=okUrl(l.url)||"#inicio";if(a.protocol!=="mailto:")a.target="_blank";a.rel="noopener noreferrer";a.textContent=l.platform+" ↗";w.appendChild(a);
     }
   });
   return w;
@@ -277,9 +288,11 @@ function render(){
   if(adm){
     const p=el(`<div class="panel"><div><h3>Redes sociales</h3><p style="margin:0;color:var(--mu);font-size:13px">Escribe tu usuario o pega el enlace completo.</p><div class="frm"><select id="pl">${Object.keys(P).map(k=>`<option>${k}</option>`).join("")}</select><input id="us" placeholder="@usuario o https://…"><button id="ad">Añadir</button></div></div></div>`);
     p.firstChild.insertBefore(socials(true),p.querySelector(".frm"));
+    const ph={WhatsApp:"Número con código de país, ej. 573001234567",Gmail:"tucorreo@gmail.com",Otro:"https://…"};
+    p.querySelector("#pl").onchange=e=>{p.querySelector("#us").placeholder=ph[e.target.value]||"@usuario o https://…"};
     p.querySelector("#ad").onclick=async()=>{
       const pl=p.querySelector("#pl").value,u=norm(pl,p.querySelector("#us").value);
-      if(!u){alert("Enlace no válido. Para «Otro» pega la URL completa (https://…).");return}
+      if(!u){alert("Dato no válido. WhatsApp: número con código de país (ej. 573001234567). Gmail: tu correo. Otro: URL completa (https://…).");return}
       if(links.length>=12){alert("Máximo 12 redes.");return}
       const {error}=await sb.from("socials").insert({platform:pl,url:u});
       if(error)alert("No se pudo guardar.");
