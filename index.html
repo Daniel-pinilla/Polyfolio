@@ -97,6 +97,32 @@ dialog{max-height:90vh;overflow:auto}
 .brand{font-family:"Jacksilver","Kaushan Script","Brush Script MT",cursive;font-weight:400;letter-spacing:0}
 header h1.brand,.login h1.brand{font-size:clamp(40px,7vw,64px);line-height:1.1}
 #intro h1{font-size:clamp(72px,18vw,180px)}
+.owner{max-width:1100px;margin:0 auto;padding:8px 20px 22px;display:flex;gap:18px;align-items:center}
+.owner .av{width:88px;height:88px;border-radius:50%;overflow:hidden;flex:none;background:var(--ac);color:#fff;display:grid;place-items:center;font-size:36px;font-weight:700;border:2px solid var(--ac)}
+.owner .av img{width:100%;height:100%;object-fit:cover}
+.owner .hi{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu)}
+.owner h2{margin:0;font-size:26px;line-height:1.2}
+.owner .role{margin:0;color:var(--ac);font-weight:600;font-size:14px}
+.owner .bio{margin:6px 0 0;color:var(--mu);max-width:62ch;font-size:15px}
+.panel{margin-bottom:14px}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tg{font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;border:1px solid var(--bd);color:var(--mu)}
+.tg.a{color:var(--ac);border-color:var(--ac)}
+.tab{background:transparent;color:var(--mu);border:1px solid var(--bd);padding:7px 14px;border-radius:99px;font-weight:600;font-size:13px}
+.tab.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.filters{max-width:1100px;margin:0 auto;padding:0 20px 14px;display:flex;gap:8px;flex-wrap:wrap}
+.lbs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.lbs:empty{display:none}
+.stat{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:6px 12px;font-size:14px}
+.stat span{display:block;color:var(--mu);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.lbtabs{display:flex;gap:8px;margin:4px 0 12px}
+.lbtabs:empty{display:none}
+.lb3 model-viewer{width:100%;height:min(70vh,620px);background:#1b1b19;border-radius:10px;display:block}
+.oacts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.owner a.btn{text-decoration:none;font-size:14px;padding:9px 16px;border-radius:10px;display:inline-block;color:#fff}
+.owner a.ghost{background:var(--card);padding:8px 14px}
+#rmgl label,#rmdl label,#rcvw label{display:flex;gap:8px;align-items:center;margin:10px 0 0}
 </style>
 </head>
 <body>
@@ -107,8 +133,8 @@ const SUPABASE_URL="https://vfagngbwifovofsxpnny.supabase.co";
 const SUPABASE_KEY="sb_publishable_iGH1IHrPnVhmyQTqxgSdRg_ywXu1qMg";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
-let session=null,items=[],links=[],pos={},loaded=false,staggered=false,editing=null;
-const safe=p=>/^[\w-]+\.(png|jpe?g|webp|gif)$/.test(String(p))?sb.storage.from("renders").getPublicUrl(p).data.publicUrl:"";
+let session=null,items=[],links=[],pos={},loaded=false,staggered=false,editing=null,profile=null,filter="all";
+const safe=p=>/^[\w-]+\.(png|jpe?g|webp|gif|glb|pdf)$/.test(String(p))?sb.storage.from("renders").getPublicUrl(p).data.publicUrl:"";
 const isAdm=()=>!!session&&location.hash==="#admin";
 const P={Instagram:"https://instagram.com/",ArtStation:"https://www.artstation.com/",Behance:"https://www.behance.net/",X:"https://x.com/",YouTube:"https://youtube.com/@",TikTok:"https://tiktok.com/@",LinkedIn:"https://linkedin.com/in/",Sketchfab:"https://sketchfab.com/",WhatsApp:"",Gmail:"",Otro:""};
 const okUrl=u=>{try{const x=new URL(String(u));return /^(https?:|mailto:)$/.test(x.protocol)?x.href:null}catch(e){return null}};
@@ -125,13 +151,13 @@ function norm(pl,v){
 }
 const el=h=>{const d=document.createElement("div");d.innerHTML=h;return d.firstElementChild};
 const dets=m=>(Array.isArray(m.details)?m.details:[]).slice(0,2);
-const allPaths=m=>[m.wire_path,m.render_path,...dets(m).flatMap(d=>[d.wire_path,d.render_path])].filter(Boolean);
-const okf=f=>/^image\/(png|jpe?g|webp|gif)$/.test(f.type)&&f.size<=10*1024*1024;
+const allPaths=m=>[m.wire_path,m.render_path,m.glb_path,...dets(m).flatMap(d=>[d.wire_path,d.render_path])].filter(Boolean);
+const okf=f=>/^image\/(png|jpe?g|webp|gif)$/.test(f.type)&&f.size<=25*1024*1024;
 
 /* ---------- Deslizador (malla / render) ---------- */
 function slider(w,r,fit,p0,onp){
   const c=el(`<div class="cmp${fit?" fit":""}"><img alt="Render"><img class="top" alt="Malla"><div class="bar"></div><span class="tag l">Malla</span><span class="tag r">Render</span></div>`);
-  const [b,t]=c.querySelectorAll("img");b.src=r;t.src=w;
+  const [b,t]=c.querySelectorAll("img");[b,t].forEach(i=>{i.decoding="async";i.loading=fit?"eager":"lazy"});b.src=r;t.src=w;
   const bar=c.querySelector(".bar");
   const set=p=>{c.style.setProperty("--p",p+"%");bar.style.left=p+"%";if(onp)onp(p)};
   set(p0);
@@ -145,10 +171,38 @@ function slider(w,r,fit,p0,onp){
 }
 
 /* ---------- Visor ampliado ---------- */
+let mvOk=false;
+function loadMV(){
+  if(mvOk)return;mvOk=true;
+  const s=document.createElement("script");s.type="module";
+  s.src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js";
+  document.head.appendChild(s);
+}
 function openLb(m){
-  const o=el('<div id="lb"><div class="lbin"><div class="lbh"><div><h2></h2><p></p></div><button class="ghost" id="lbx">Cerrar ✕</button></div><div class="lbm"></div><div class="lbd"></div></div></div>');
+  const o=el('<div id="lb"><div class="lbin"><div class="lbh"><div><h2></h2><p></p></div><button class="ghost" id="lbx">Cerrar ✕</button></div><div class="lbs"></div><div class="lbtabs"></div><div class="lbm"></div><div class="lb3" hidden></div><div class="lbd"></div></div></div>');
   o.querySelector("h2").textContent=m.name;o.querySelector("p").textContent=m.descr||"";
-  o.querySelector(".lbm").appendChild(slider(safe(m.wire_path),safe(m.render_path),true,50));
+  [["Categoría",m.category],["Software",m.software],["Polígonos",m.polys],["Tiempo",m.work_time]].filter(x=>x[1]).forEach(([k,v])=>{
+    const d=el('<div class="stat"><span></span><b></b></div>');d.firstChild.textContent=k;d.lastChild.textContent=v;o.querySelector(".lbs").appendChild(d);
+  });
+  const lm=o.querySelector(".lbm"),l3=o.querySelector(".lb3");
+  lm.appendChild(slider(safe(m.wire_path),safe(m.render_path),true,50));
+  const g=m.glb_path?safe(m.glb_path):"";
+  if(g){
+    const tb=o.querySelector(".lbtabs"),b1=el('<button class="tab on">Malla / Render</button>'),b2=el('<button class="tab">3D interactivo</button>');
+    tb.appendChild(b1);tb.appendChild(b2);
+    let mv=null;
+    const show=v=>{
+      lm.hidden=v;l3.hidden=!v;b1.classList.toggle("on",!v);b2.classList.toggle("on",v);
+      if(v&&!mv){
+        loadMV();mv=document.createElement("model-viewer");
+        mv.setAttribute("src",g);mv.setAttribute("alt","Modelo 3D de "+m.name);
+        mv.setAttribute("camera-controls","");mv.setAttribute("auto-rotate","");
+        mv.setAttribute("shadow-intensity","1");mv.setAttribute("environment-image","neutral");mv.setAttribute("touch-action","pan-y");
+        l3.appendChild(mv);l3.appendChild(el('<p class="cap">Arrastra para girar · rueda o pellizco para acercar</p>'));
+      }
+    };
+    b1.onclick=()=>show(false);b2.onclick=()=>show(true);
+  }
   const d=dets(m),ld=o.querySelector(".lbd");
   if(d.length){
     ld.appendChild(el("<h3>Detalles</h3>"));
@@ -164,15 +218,19 @@ function openLb(m){
 
 /* ---------- Tarjeta ---------- */
 function card(m,adm,i,st){
-  const c0=el(`<article class="card${st?" rise":""}" style="--i:${i}"><div class="slot"></div><div class="info"><div><h2 style="margin:0"><button class="nm"></button></h2><p></p></div><div class="acts"></div></div></article>`);
+  const c0=el(`<article class="card${st?" rise":""}" style="--i:${i}"><div class="slot"></div><div class="info"><div><h2 style="margin:0"><button class="nm"></button></h2><p></p><div class="tags"></div></div><div class="acts"></div></div></article>`);
   c0.querySelector(".slot").appendChild(slider(safe(m.wire_path),safe(m.render_path),false,pos[m.id]??50,p=>pos[m.id]=p));
   const nm=c0.querySelector(".nm");nm.textContent=m.name;nm.title="Ver completo";nm.onclick=()=>openLb(m);
-  const p=c0.querySelector("p");p.textContent=m.descr||"";
-  if(dets(m).length){const s=document.createElement("span");s.textContent=(m.descr?" · ":"")+dets(m).length+" detalle"+(dets(m).length>1?"s":"");p.appendChild(s)}
+  const p=c0.querySelector("p");p.textContent=m.descr||"";if(!m.descr)p.remove();
+  const tg=c0.querySelector(".tags"),add=(t,a)=>{const s=document.createElement("span");s.className="tg"+(a?" a":"");s.textContent=t;tg.appendChild(s)};
+  if(m.category)add(m.category);if(m.software)add(m.software);
+  if(m.glb_path)add("3D interactivo",1);
+  if(dets(m).length)add(dets(m).length+" detalle"+(dets(m).length>1?"s":""),1);
+  if(!tg.children.length)tg.remove();
   c0.addEventListener("pointermove",e=>{const q=c0.getBoundingClientRect();c0.style.setProperty("--gx",(e.clientX-q.left)+"px");c0.style.setProperty("--gy",(e.clientY-q.top)+"px")});
   if(adm){
     const a=c0.querySelector(".acts");
-    const e1=el('<button class="ghost">Detalles</button>');e1.onclick=()=>openDlg(m);a.appendChild(e1);
+    const e1=el('<button class="ghost">Editar</button>');e1.onclick=()=>openDlg(m);a.appendChild(e1);
     const b=el('<button class="ghost">Eliminar</button>');
     b.onclick=async()=>{
       if(!confirm("¿Eliminar este modelo?"))return;
@@ -214,61 +272,136 @@ function loginView(){
 /* ---------- Formulario del administrador ---------- */
 function ensureDlg(){
   if($("dlg"))return;
+  const pair=(a,b,t)=>`<div class="dl">${t}</div><div class="two"><div><label>Malla</label><input type="file" id="${a}" accept="image/*"></div><div><label>Render</label><input type="file" id="${b}" accept="image/*"></div></div>`;
   const d=el(`<dialog id="dlg"><h2 id="dt" style="margin:0">Nuevo modelo</h2>
-  <div id="mainf"><label>Nombre</label><input type="text" id="name" maxlength="80"><label>Descripción (opcional)</label><textarea id="desc" rows="2" maxlength="300"></textarea>
-  <div class="dl">Portada</div><div class="two"><div><label>Malla</label><input type="file" id="f1" accept="image/*"></div><div><label>Render</label><input type="file" id="f2" accept="image/*"></div></div></div>
-  <div class="dl">Detalle 1 (opcional)</div><div class="two"><div><label>Malla</label><input type="file" id="d1w" accept="image/*"></div><div><label>Render</label><input type="file" id="d1r" accept="image/*"></div></div>
-  <div class="dl">Detalle 2 (opcional)</div><div class="two"><div><label>Malla</label><input type="file" id="d2w" accept="image/*"></div><div><label>Render</label><input type="file" id="d2r" accept="image/*"></div></div>
-  <p id="dh" style="font-size:12px;color:var(--mu)">Cada detalle necesita malla y render. PNG, JPG, WebP o GIF, máximo 10 MB.</p>
+  <label>Nombre</label><input type="text" id="mname" maxlength="80">
+  <label>Descripción (opcional)</label><textarea id="mdesc" rows="2" maxlength="300"></textarea>
+  <div class="two"><div><label>Categoría</label><input type="text" id="mcat" list="cats" maxlength="40" placeholder="Personajes, Props…"><datalist id="cats"></datalist></div><div><label>Software</label><input type="text" id="msw" maxlength="60" placeholder="Blender, ZBrush…"></div></div>
+  <div class="two"><div><label>Polígonos</label><input type="text" id="mpoly" maxlength="30" placeholder="Ej: 45.000"></div><div><label>Tiempo de trabajo</label><input type="text" id="mtime" maxlength="30" placeholder="Ej: 12 horas"></div></div>
+  ${pair("f1","f2",'Portada <span id="covh" style="font-weight:400;color:var(--mu)"></span>')}
+  <div class="dl">Modelo 3D interactivo (opcional, .glb)</div><input type="file" id="g" accept=".glb"><div id="rmgl"><label><input type="checkbox" id="rmg"> Quitar el modelo 3D actual</label></div>
+  ${pair("d1w","d1r","Detalle 1 (opcional)")}${pair("d2w","d2r","Detalle 2 (opcional)")}
+  <div id="rmdl"><label><input type="checkbox" id="rmd"> Quitar todos los detalles actuales</label></div>
+  <p style="font-size:12px;color:var(--mu)">Imágenes PNG, JPG, WebP o GIF (se comprimen solas a WebP, máx. 25 MB). Modelo .glb máx. 30 MB. Cada detalle necesita malla y render.</p>
   <div class="row"><button class="ghost" id="cancel">Cancelar</button><button id="save">Guardar</button></div></dialog>`);
   document.body.appendChild(d);
   $("cancel").onclick=()=>$("dlg").close();$("save").onclick=save;
 }
 function openDlg(m){
   ensureDlg();editing=m||null;
-  ["name","desc","f1","f2","d1w","d1r","d2w","d2r"].forEach(i=>$(i).value="");
-  $("mainf").hidden=!!m;
-  $("dt").textContent=m?"Detalles de «"+m.name+"»":"Nuevo modelo";
-  $("dh").textContent=(m?"Los detalles que subas reemplazan a los actuales. Sin archivos = se quitan. ":"")+"Cada detalle necesita malla y render. PNG, JPG, WebP o GIF, máximo 10 MB.";
+  ["mname","mdesc","mcat","msw","mpoly","mtime","f1","f2","g","d1w","d1r","d2w","d2r"].forEach(i=>$(i).value="");
+  ["rmg","rmd"].forEach(i=>$(i).checked=false);
+  if(m){$("mname").value=m.name||"";$("mdesc").value=m.descr||"";$("mcat").value=m.category||"";$("msw").value=m.software||"";$("mpoly").value=m.polys||"";$("mtime").value=m.work_time||""}
+  $("cats").innerHTML="";
+  [...new Set(["Personajes","Props","Entornos","Vehículos","Armas","Otros",...items.map(x=>x.category).filter(Boolean)])].forEach(c=>{const o=document.createElement("option");o.value=c;$("cats").appendChild(o)});
+  $("dt").textContent=m?"Editar «"+m.name+"»":"Nuevo modelo";
+  $("covh").textContent=m?"(vacío = conservar la actual)":"";
+  $("rmgl").hidden=!(m&&m.glb_path);$("rmdl").hidden=!(m&&dets(m).length);
   $("dlg").showModal();
 }
+async function optimize(f){
+  if(f.type==="image/gif")return f;
+  try{
+    const bmp=await createImageBitmap(f);
+    const k=Math.min(1,2400/Math.max(bmp.width,bmp.height));
+    const c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,"image/webp",.86));
+    if(b&&b.type==="image/webp"&&b.size<f.size)return b;
+  }catch(e){}
+  return f;
+}
 async function up(f){
-  const p=crypto.randomUUID()+"."+f.type.split("/")[1].replace("jpeg","jpg");
-  const {error}=await sb.storage.from("renders").upload(p,f,{contentType:f.type});
+  const o=await optimize(f);
+  const p=crypto.randomUUID()+"."+o.type.split("/")[1].replace("jpeg","jpg");
+  const {error}=await sb.storage.from("renders").upload(p,o,{contentType:o.type});
+  if(error)throw error;return p;
+}
+async function upFile(f,ext,type){
+  const p=crypto.randomUUID()+"."+ext;
+  const {error}=await sb.storage.from("renders").upload(p,f,{contentType:type});
   if(error)throw error;return p;
 }
 async function save(){
+  const E=editing,name=$("mname").value.trim();
+  if(!name){alert("Falta el nombre.");return}
+  const w=$("f1").files[0],r=$("f2").files[0];
+  if(!E&&(!w||!r)){alert("Falta alguna de las dos imágenes de portada.");return}
+  if(!w!==!r){alert("Para cambiar la portada sube malla y render.");return}
+  if((w&&!okf(w))||(r&&!okf(r))){alert("Las imágenes deben ser PNG, JPG, WebP o GIF de máximo 25 MB.");return}
+  const g=$("g").files[0];
+  if(g&&!(/\.glb$/i.test(g.name)&&g.size<=30*1024*1024)){alert("El modelo 3D debe ser un archivo .glb de máximo 30 MB.");return}
   const pairs=[];
   for(const n of [1,2]){
-    const w=$("d"+n+"w").files[0],r=$("d"+n+"r").files[0];
-    if(!w&&!r)continue;
-    if(!w||!r){alert("El detalle "+n+" necesita malla y render.");return}
-    if(!okf(w)||!okf(r)){alert("Detalle "+n+": solo PNG, JPG, WebP o GIF de máximo 10 MB.");return}
-    pairs.push([w,r]);
+    const a=$("d"+n+"w").files[0],b=$("d"+n+"r").files[0];
+    if(!a&&!b)continue;
+    if(!a||!b){alert("El detalle "+n+" necesita malla y render.");return}
+    if(!okf(a)||!okf(b)){alert("Detalle "+n+": solo imágenes PNG, JPG, WebP o GIF de máximo 25 MB.");return}
+    pairs[n-1]=[a,b];
   }
-  let w,r,name;
-  if(!editing){
-    w=$("f1").files[0];r=$("f2").files[0];name=$("name").value.trim();
-    if(!w||!r||!name){alert("Falta el nombre o alguna de las dos imágenes de portada.");return}
-    if(!okf(w)||!okf(r)){alert("Solo imágenes PNG, JPG, WebP o GIF de máximo 10 MB.");return}
-  }else if(!pairs.length&&!confirm("No elegiste imágenes: se quitarán los detalles de este modelo. ¿Continuar?"))return;
   const btn=$("save");btn.disabled=true;btn.textContent="Subiendo…";
   try{
-    const det=[];
-    for(const [a,b] of pairs)det.push({wire_path:await up(a),render_path:await up(b)});
-    if(editing){
-      const {error}=await sb.from("models").update({details:det}).eq("id",editing.id);
-      if(error)throw error;
-      const old=dets(editing).flatMap(d=>[d.wire_path,d.render_path]).filter(Boolean);
-      if(old.length)await sb.storage.from("renders").remove(old);
-    }else{
-      const a=await up(w),b=await up(r);
-      const {error}=await sb.from("models").insert({name:name.slice(0,80),descr:$("desc").value.trim().slice(0,300),wire_path:a,render_path:b,details:det});
-      if(error)throw error;
+    const t=i=>$(i).value.trim();
+    const upd={name:name.slice(0,80),descr:t("mdesc").slice(0,300),category:t("mcat").slice(0,40)||null,software:t("msw").slice(0,60)||null,polys:t("mpoly").slice(0,30)||null,work_time:t("mtime").slice(0,30)||null};
+    const rm=[];
+    if(w){upd.wire_path=await up(w);upd.render_path=await up(r);if(E)rm.push(E.wire_path,E.render_path)}
+    if(g){upd.glb_path=await upFile(g,"glb","model/gltf-binary");if(E&&E.glb_path)rm.push(E.glb_path)}
+    else if(E&&$("rmg").checked){upd.glb_path=null;if(E.glb_path)rm.push(E.glb_path)}
+    let det=E?dets(E).slice():[];
+    if(E&&$("rmd").checked){det.forEach(x=>rm.push(x.wire_path,x.render_path));det=[]}
+    for(const i of [0,1])if(pairs[i]){
+      if(det[i])rm.push(det[i].wire_path,det[i].render_path);
+      det[i]={wire_path:await up(pairs[i][0]),render_path:await up(pairs[i][1])};
     }
+    upd.details=det.filter(Boolean);
+    const {error}=E?await sb.from("models").update(upd).eq("id",E.id):await sb.from("models").insert(upd);
+    if(error)throw error;
+    const del=rm.filter(Boolean);if(del.length)await sb.storage.from("renders").remove(del);
     $("dlg").close();
   }catch(e){alert("No se pudo guardar: "+(e.message||"error"))}
   btn.disabled=false;btn.textContent="Guardar";
+}
+
+/* ---------- Dueño del portafolio ---------- */
+function owner(){
+  if(!profile||!profile.name)return null;
+  const c=el('<section class="owner"><div class="av"></div><div><p class="hi">Portafolio de</p><h2></h2><p class="role"></p><p class="bio"></p><div class="oacts"></div></div></section>');
+  c.querySelector("h2").textContent=profile.name;
+  c.querySelector(".role").textContent=profile.role||"";
+  c.querySelector(".bio").textContent=profile.bio||"";
+  if(!profile.role)c.querySelector(".role").remove();
+  if(!profile.bio)c.querySelector(".bio").remove();
+  const av=c.querySelector(".av"),u=safe(profile.avatar_path);
+  if(u){const i=document.createElement("img");i.src=u;i.alt=profile.name;av.appendChild(i)}
+  else av.textContent=profile.name.trim().charAt(0).toUpperCase();
+  const oa=c.querySelector(".oacts");
+  const btn=(txt,href,main,blank)=>{const a=document.createElement("a");a.className=main?"btn":"ghost";a.textContent=txt;a.href=href;if(blank){a.target="_blank";a.rel="noopener noreferrer"}oa.appendChild(a)};
+  const wa=links.find(l=>l.platform==="WhatsApp"&&okUrl(l.url)),gm=links.find(l=>l.platform==="Gmail"&&okUrl(l.url));
+  if(wa){const x=new URL(okUrl(wa.url));x.searchParams.set("text","Hola "+profile.name+", vi tu portafolio en Polyfolio y me gustaría hablar contigo.");btn("Contrátame por WhatsApp",x.href,true,true)}
+  if(gm){const x=okUrl(gm.url);btn("Escribir por correo",x+(x.includes("?")?"&":"?")+"subject="+encodeURIComponent("Contacto desde tu portafolio"),!wa,false)}
+  const cv=profile.cv_path?safe(profile.cv_path):"";
+  if(cv)btn("Descargar CV",cv,!wa&&!gm,true);
+  if(!oa.children.length)oa.remove();
+  return c;
+}
+async function saveProfile(){
+  const name=$("pn").value.trim();
+  if(!name){alert("Escribe tu nombre.");return}
+  const f=$("pa").files[0],cv=$("pc").files[0];
+  if(f&&!okf(f)){alert("La foto debe ser PNG, JPG, WebP o GIF de máximo 25 MB.");return}
+  if(cv&&(cv.type!=="application/pdf"||cv.size>10*1024*1024)){alert("El CV debe ser un PDF de máximo 10 MB.");return}
+  const btn=$("ps");btn.disabled=true;btn.textContent="Guardando…";
+  try{
+    let path=(profile&&profile.avatar_path)||null,cvp=(profile&&profile.cv_path)||null;const rm=[];
+    if(f){if(path)rm.push(path);path=await up(f)}
+    if(cv){if(cvp)rm.push(cvp);cvp=await upFile(cv,"pdf","application/pdf")}
+    else if($("rcv")&&$("rcv").checked){if(cvp)rm.push(cvp);cvp=null}
+    const {error}=await sb.from("profile").upsert({id:1,name:name.slice(0,60),role:$("pr").value.trim().slice(0,80),bio:$("pb").value.trim().slice(0,400),avatar_path:path,cv_path:cvp});
+    if(error)throw error;
+    if(rm.length)await sb.storage.from("renders").remove(rm);
+    $("pa").value="";$("pc").value="";
+  }catch(e){alert("No se pudo guardar el perfil: "+(e.message||"error"))}
+  btn.disabled=false;btn.textContent="Guardar perfil";
 }
 
 /* ---------- Pantalla ---------- */
@@ -285,7 +418,11 @@ function render(){
   }else tools.appendChild(el('<span class="badge live">En vivo</span>'));
   if(!adm&&links.length)hd.firstChild.appendChild(socials(false));
   app.appendChild(hd);
+  if(!adm){const ow=owner();if(ow)app.appendChild(ow)}
   if(adm){
+    const pf=el(`<div class="panel"><div><h3>Perfil del dueño</h3><p style="margin:0;color:var(--mu);font-size:13px">Se muestra en la página pública, debajo del título.</p><div class="two" style="margin-top:12px"><div><label>Nombre</label><input type="text" id="pn" maxlength="60" placeholder="Tu nombre o nombre artístico"></div><div><label>Profesión</label><input type="text" id="pr" maxlength="80" placeholder="Ej: Artista 3D · Modelador"></div></div><label>Sobre ti (opcional)</label><textarea id="pb" rows="3" maxlength="400" placeholder="Quién eres, tu software y tu estilo"></textarea><label>Foto (opcional)</label><input type="file" id="pa" accept="image/*"><label>Currículum (CV) en PDF (opcional)</label><input type="file" id="pc" accept="application/pdf"><div id="rcvw"><label><input type="checkbox" id="rcv"> Quitar el CV actual</label></div><div class="row"><button id="ps">Guardar perfil</button></div></div></div>`);
+    pf.querySelector("#pn").value=(profile&&profile.name)||"";pf.querySelector("#pr").value=(profile&&profile.role)||"";pf.querySelector("#pb").value=(profile&&profile.bio)||"";
+    pf.querySelector("#ps").onclick=saveProfile;if(!(profile&&profile.cv_path))pf.querySelector("#rcvw").hidden=true;app.appendChild(pf);
     const p=el(`<div class="panel"><div><h3>Redes sociales</h3><p style="margin:0;color:var(--mu);font-size:13px">Escribe tu usuario o pega el enlace completo.</p><div class="frm"><select id="pl">${Object.keys(P).map(k=>`<option>${k}</option>`).join("")}</select><input id="us" placeholder="@usuario o https://…"><button id="ad">Añadir</button></div></div></div>`);
     p.firstChild.insertBefore(socials(true),p.querySelector(".frm"));
     const ph={WhatsApp:"Número con código de país, ej. 573001234567",Gmail:"tucorreo@gmail.com",Otro:"https://…"};
@@ -299,10 +436,18 @@ function render(){
     };
     app.appendChild(p);
   }
+  const cats=[...new Set(items.map(m=>m.category).filter(Boolean))];
+  if(filter!=="all"&&!cats.includes(filter))filter="all";
+  if(cats.length){
+    const fb=el('<div class="filters"></div>');
+    ["Todos",...cats].forEach(c=>{const b=el('<button class="tab"></button>');b.textContent=c;if((c==="Todos"?"all":c)===filter)b.classList.add("on");b.onclick=()=>{filter=c==="Todos"?"all":c;render()};fb.appendChild(b)});
+    app.appendChild(fb);
+  }
+  const vis=filter==="all"?items:items.filter(m=>m.category===filter);
   const g=el('<main id="grid"></main>');
   if(!loaded)g.innerHTML='<div class="empty">Cargando…</div>';
-  else if(!items.length)g.innerHTML='<div class="empty">'+(adm?"Aún no hay modelos. Pulsa “Añadir modelo”.":"Pronto habrá modelos nuevos por aquí.")+"</div>";
-  else{const st=!staggered;items.forEach((m,i)=>g.appendChild(card(m,adm,i,st)));staggered=true}
+  else if(!vis.length)g.innerHTML='<div class="empty">'+(adm?"Aún no hay modelos. Pulsa “Añadir modelo”.":"Pronto habrá modelos nuevos por aquí.")+"</div>";
+  else{const st=!staggered;vis.forEach((m,i)=>g.appendChild(card(m,adm,i,st)));staggered=true}
   app.appendChild(g);
 }
 
@@ -323,38 +468,56 @@ function intro(){
   },1900);
 }
 
-/* ---------- Luz y partículas del cursor ---------- */
+/* ---------- Fondo de escamas que reacciona al cursor ---------- */
 (function(){
-  if(matchMedia("(pointer:coarse)").matches||matchMedia("(prefers-reduced-motion:reduce)").matches)return;
-  const cv=document.createElement("canvas");cv.id="fx";
-  const gl=document.createElement("div");gl.id="glow";
-  document.body.appendChild(gl);document.body.appendChild(cv);
-  const x=cv.getContext("2d");let w,h,ps=[],col="#e8590c",n=0;
-  const rs=()=>{w=cv.width=innerWidth;h=cv.height=innerHeight};rs();addEventListener("resize",rs);
-  addEventListener("pointermove",e=>{
-    gl.style.opacity=1;gl.style.transform=`translate(${e.clientX}px,${e.clientY}px)`;
-    for(let i=0;i<2&&ps.length<160;i++)ps.push({x:e.clientX,y:e.clientY,vx:(Math.random()-.5)*1.4,vy:(Math.random()-.5)*1.4-.3,l:1,s:1+Math.random()*2.2});
-  });
-  document.addEventListener("pointerleave",()=>gl.style.opacity=0);
-  (function loop(){
-    if(n++%30===0)col=getComputedStyle(document.documentElement).getPropertyValue("--ac").trim()||col;
-    x.clearRect(0,0,w,h);
-    ps=ps.filter(p=>p.l>0);
-    ps.forEach(p=>{
-      p.x+=p.vx;p.y+=p.vy;p.l-=.02;
-      x.fillStyle=col;
-      x.globalAlpha=Math.max(p.l,0)*.18;x.beginPath();x.arc(p.x,p.y,p.s*3.2,0,6.283);x.fill();
-      x.globalAlpha=Math.max(p.l,0);x.beginPath();x.arc(p.x,p.y,p.s*p.l+.3,0,6.283);x.fill();
-    });
-    x.globalAlpha=1;
-    requestAnimationFrame(loop);
-  })();
+  const cv=document.createElement("canvas");cv.id="bg";document.body.prepend(cv);
+  const x=cv.getContext("2d"),reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const S=46,R=S/2,RAD=200;
+  let W=0,H=0,dpr=1,cols=0,rows=0,v=[],mx=-9999,my=-9999,raf=0,C=null;
+  const hex=h=>{h=h.trim().replace("#","");if(h.length===3)h=h.replace(/./g,"$&$&");const n=parseInt(h,16);return[(n>>16)&255,(n>>8)&255,n&255]};
+  const rgba=(c,a)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  const readC=()=>{const cs=getComputedStyle(document.documentElement),g=n=>cs.getPropertyValue(n).trim()||"#888888";C={bg:hex(g("--bg")),bd:hex(g("--bd")),ac:hex(g("--ac"))}};
+  function size(){
+    dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+    cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+    cols=Math.ceil(W/S)+2;rows=Math.ceil(H/R)+3;v=new Array(cols*rows).fill(0);
+    readC();draw();
+  }
+  function draw(){
+    if(!C)readC();
+    x.setTransform(dpr,0,0,dpr,0,0);
+    x.fillStyle=rgba(C.bg,1);x.fillRect(0,0,W,H);
+    x.lineWidth=1;let moving=false;
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+      const i=r*cols+c,cx=c*S+(r%2?R:0),cy=r*R,dx=cx-mx,dy=cy-my,d=Math.hypot(dx,dy);
+      const t=reduce?0:Math.max(0,1-d/RAD);
+      v[i]+=(t-v[i])*.12;
+      if(Math.abs(t-v[i])>.005)moving=true;else v[i]=t;
+      const k=v[i],ox=d>0?dx/d*k*3:0,oy=d>0?dy/d*k*3-k*4:0;
+      x.beginPath();x.arc(cx+ox,cy+oy,R*(1+k*.05),0,6.2832);
+      x.fillStyle=rgba(C.bg,1);x.fill();
+      if(k>.02){x.fillStyle=rgba(C.ac,k*.1);x.fill()}
+      x.strokeStyle=rgba(C.bd,.9);x.stroke();
+      if(k>.02){x.strokeStyle=rgba(C.ac,k*.5);x.stroke()}
+    }
+    return moving;
+  }
+  function tick(){raf=0;if(draw())kick()}
+  function kick(){if(!raf)raf=requestAnimationFrame(tick)}
+  size();addEventListener("resize",size);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{readC();kick()});
+  if(!reduce){
+    addEventListener("pointermove",e=>{mx=e.clientX;my=e.clientY;kick()});
+    document.addEventListener("pointerleave",()=>{mx=my=-9999;kick()});
+  }
 })();
 
 /* ---------- Datos ---------- */
 async function load(){
-  const [a,b]=await Promise.all([sb.from("models").select("*").order("created_at",{ascending:false}),sb.from("socials").select("*").order("created_at")]);
-  items=a.data||[];links=b.data||[];loaded=true;render();
+  const [a,b,c]=await Promise.all([sb.from("models").select("*").order("created_at",{ascending:false}),sb.from("socials").select("*").order("created_at"),sb.from("profile").select("*").eq("id",1).maybeSingle()]);
+  items=a.data||[];links=b.data||[];profile=(c&&c.data)||null;loaded=true;
+  document.title=(profile&&profile.name?profile.name+" · ":"")+"Polyfolio · Portafolio 3D";
+  render();
 }
 window.addEventListener("hashchange",render);
 sb.auth.onAuthStateChange((_e,s)=>{session=s;render()});
